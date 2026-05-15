@@ -1,0 +1,650 @@
+\documentclass[10pt,letterpaper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{booktabs}
+\usepackage[colorlinks=true,urlcolor=blue,linkcolor=black]{hyperref}
+
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{codecomment}{RGB}{100,100,100}
+\definecolor{codestring}{RGB}{180,50,50}
+\definecolor{codekeyword}{RGB}{0,80,180}
+
+\lstset{
+  language=Python,
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{codekeyword}\bfseries,
+  stringstyle=\color{codestring},
+  commentstyle=\color{codecomment}\itshape,
+  showstringspaces=false,
+  frame=single,
+  framerule=0pt,
+  rulecolor=\color{codebg},
+  xleftmargin=6pt,
+  xrightmargin=6pt,
+  aboveskip=12pt,
+  belowskip=4pt,
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=4,
+  morekeywords={as, with, yield, lambda, None, True, False, self},
+}
+
+\titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries\itshape}{}{0em}{}
+\titlespacing{\section}{0pt}{12pt}{4pt}
+\titlespacing{\subsection}{0pt}{8pt}{2pt}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE \textbf{Python Idioms Reference}}\\[4pt]
+  {\normalsize CodeSignal Assessment Prep}
+\end{center}
+
+\vspace{6pt}
+
+%-----------------------------------------------------------------------
+\section*{Quick Reference --- Open These Tabs First}
+
+\begin{itemize}[noitemsep,leftmargin=*]
+  \item \href{https://docs.python.org/3/library/functions.html}{\texttt{docs.python.org/3/library/functions.html}} --- Built-ins: \texttt{len, sorted, min, max, sum, enumerate, zip, range, isinstance, any, all, next}
+  \item \href{https://docs.python.org/3/library/stdtypes.html#text-sequence-type-str}{\texttt{docs.python.org/3/library/stdtypes.html\#text-sequence-type-str}} --- String methods: \texttt{split, join, strip, find, replace, startswith}
+  \item \href{https://docs.python.org/3/library/stdtypes.html#mapping-types-dict}{\texttt{docs.python.org/3/library/stdtypes.html\#mapping-types-dict}} --- Dict methods: \texttt{get, items, keys, values, setdefault, pop}
+  \item \href{https://docs.python.org/3/library/threading.html}{\texttt{docs.python.org/3/library/threading.html}} --- \texttt{Thread, Lock, start, join}
+  \item \href{https://docs.python.org/3/library/queue.html}{\texttt{docs.python.org/3/library/queue.html}} --- \texttt{Queue, put, get, Empty, task\_done}
+  \item \href{https://docs.python.org/3/library/asyncio.html}{\texttt{docs.python.org/3/library/asyncio.html}} --- \texttt{async def, await, gather, run, sleep}
+  \item \href{https://docs.python.org/3/library/collections.html}{\texttt{docs.python.org/3/library/collections.html}} --- \texttt{defaultdict, Counter, deque}
+  \item \href{https://docs.python.org/3/library/unittest.html}{\texttt{docs.python.org/3/library/unittest.html}} --- \texttt{assertEqual, assertRaises, setUp, assertIsNone, assertTrue}
+  \item \href{https://docs.python.org/3/library/stdtypes.html#list}{\texttt{docs.python.org/3/library/stdtypes.html\#list}} --- List methods: \texttt{append, extend, pop, remove, insert, sort}
+\end{itemize}
+
+\vspace{4pt}
+
+%-----------------------------------------------------------------------
+\section{Dict Patterns \normalfont\small\href{https://docs.python.org/3/library/stdtypes.html#mapping-types-dict}{docs}}
+
+\begin{lstlisting}
+d.get(key, default)           # safe lookup, no KeyError
+d.get(key, 0) + 1             # increment with default -- memorize this
+d.setdefault(key, []).append(x)  # get or create, then use
+
+# Running counter (word count pattern)
+counts = {}
+for x in items:
+    counts[x] = counts.get(x, 0) + 1
+
+# Existence check
+if key in d:        # True if key exists
+if key not in d:    # True if key is absent -- prefer over "not key in d"
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Sorting with Keys \normalfont\small\href{https://docs.python.org/3/library/functions.html#sorted}{docs}}
+
+\begin{lstlisting}
+sorted(items, key=lambda x: x["score"])                    # sort by field
+sorted(items, key=lambda x: (-x["score"], x["name"]))      # desc score, asc name (tie-break)
+sorted(items, key=lambda x: x[1], reverse=True)            # sort list of tuples by second element
+lst.sort()        # sorts in place, returns None
+sorted(lst)       # returns new list, original unchanged
+
+# min/max without sorting the whole list
+min(items, key=lambda x: x["id"])      # item with lowest id -- O(n), cleaner than sorted()[0]
+max(items, key=lambda x: x["score"])   # item with highest score
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Unpacking}
+
+\begin{lstlisting}
+a, b = b, a                   # swap without temp variable
+first, *rest = [1, 2, 3, 4]   # first=1, rest=[2,3,4]
+*init, last  = [1, 2, 3, 4]   # init=[1,2,3], last=4
+a, b = some_tuple             # unpack a 2-tuple
+for i, x in enumerate(lst):  # index + value simultaneously
+for a, b in zip(list1, list2):  # parallel iteration
+
+# Tuple unpacking in loops (common in CodeSignal action lists)
+for action_type, *args in actions:    # action_type = first element, rest in args
+    if action_type == "post":
+        author, content = args
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Comprehensions}
+
+\begin{lstlisting}
+[f(x) for x in lst if condition(x)]         # filter + transform
+{k: v for k, v in d.items() if v > 0}       # filter a dict
+{k: [] for k in keys}                        # initialize dict of lists
+[[0]*cols for _ in range(rows)]              # 2D list (NOT [[0]*cols]*rows -- shared ref bug)
+
+# Flattening one level
+[x for sublist in nested for x in sublist]
+
+# Set comprehension -- get unique values
+{item["author"] for item in books}
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{String Operations \normalfont\small\href{https://docs.python.org/3/library/stdtypes.html#text-sequence-type-str}{docs}}
+
+\begin{lstlisting}
+", ".join(["a", "b", "c"])    # -> "a, b, c"
+"hello world".split()         # -> ["hello", "world"] (any whitespace)
+"a:b:c".split(":")            # -> ["a", "b", "c"] (specific delimiter)
+"  hello  ".strip()           # -> "hello" (strips both ends)
+"  hello  ".lstrip()          # -> "hello  " (left only)
+
+# f-string format specs
+f"{value:.2f}"                # float with 2 decimal places:  "3.14"
+f"{value:>10}"                # right-align in 10-char field: "      3.14"
+f"{value:<12}"                # left-align in 12-char field:  "3.14        "
+f"{value:03d}"                # zero-pad integer:             "007"
+f"{value!r}"                  # repr (adds quotes) -- useful for debugging
+
+# Parsing a structured line (common in assessments)
+fn_id, event, timestamp = log_line.split(":")
+name, score, category = line.strip().split(":")
+
+# Skip blank lines
+lines = [l for l in text.split("\n") if l.strip()]
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Control Flow Idioms}
+
+\begin{lstlisting}
+x = value if condition else default            # ternary
+any(x > 0 for x in lst)                       # True if any element satisfies
+all(x > 0 for x in lst)                       # True if all elements satisfy
+next((x for x in lst if x > 0), None)         # first match or None (safe)
+
+# Truthiness -- prefer over len() checks
+if lst:           # True if list is non-empty
+if not lst:       # True if list is empty
+if d:             # True if dict is non-empty
+if queued_jobs:   # cleaner than if len(queued_jobs) > 0:
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Working with Indices}
+
+\begin{lstlisting}
+lst[-1]         # last element
+lst[-2]         # second to last
+lst[::-1]       # reversed copy
+lst[i:j]        # slice i to j (exclusive)
+(n-1)//2        # leftmost middle index (use for median -- verified against examples)
+n//2            # rightmost middle index for even n
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Collections (standard library) \normalfont\small\href{https://docs.python.org/3/library/collections.html}{docs}}
+
+\begin{lstlisting}
+from collections import defaultdict
+d = defaultdict(int)       # missing keys return 0
+d = defaultdict(list)      # missing keys return []
+d["new_key"].append(x)     # no KeyError even if key is absent
+
+from collections import Counter
+c = Counter([1, 1, 2, 3])  # -> {1:2, 2:1, 3:1}
+c.most_common(3)           # top 3 by count as list of (value, count) tuples
+
+from collections import deque
+q = deque()
+q.appendleft(x)            # O(1) prepend (list.insert(0,x) is O(n))
+q.popleft()                # O(1) pop from front
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Class Design Patterns}
+
+\subsection{Manager class -- standard CodeSignal pattern}
+\begin{lstlisting}
+class ManagerImpl:
+    def __init__(self):
+        self.items = {}       # id -> item dict -- O(1) lookup, not a list
+        self.next_id = 1
+        self.lock = threading.Lock()   # add lock immediately even if not yet needed
+
+    def add_item(self, name):
+        item_id = self.next_id
+        self.items[item_id] = {
+            "id": item_id, "name": name, "status": "pending",
+            "total_ops": 0         # add ALL fields you'll need for later levels
+        }
+        self.next_id += 1
+        return item_id
+
+    def get_item(self, item_id):
+        return self.items.get(item_id)   # returns None if not found -- use this
+\end{lstlisting}
+
+\subsection{Status transition pattern}
+\begin{lstlisting}
+def start(self, item_id):
+    if item_id not in self.items:
+        raise ValueError("not found")
+    if self.items[item_id]["status"] != "pending":
+        raise ValueError(f"expected pending, got {self.items[item_id]['status']}")
+    self.items[item_id]["status"] = "active"
+\end{lstlisting}
+
+\subsection{Aggregation -- iterating stored items}
+\begin{lstlisting}
+# Total copies across all books
+total = sum(b["copies"] for b in self.library.values())
+
+# Unique users (flattening a list-of-lists field)
+all_users = {u for item in self.items.values() for u in item["checked_out_by"]}
+
+# Top n by field, with tie-breaking
+top = sorted(self.items.values(),
+             key=lambda x: (-x["total_checkouts"], x["title"]))[:n]
+result = [{"id": b["id"], "title": b["title"],
+           "total_checkouts": b["total_checkouts"]} for b in top]
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Threading \normalfont\small\href{https://docs.python.org/3/library/threading.html}{docs}}
+
+\begin{lstlisting}
+import threading
+
+# Basic thread -- start all, then join all (never join inside start loop)
+threads = []
+for f in funcs:
+    t = threading.Thread(target=f)          # target is function object, no ()
+    t.start()
+    threads.append(t)
+for t in threads:
+    t.join()                                # waits for all to finish
+
+# Thread with arguments
+t = threading.Thread(target=worker, args=("Alice",))   # args must be a tuple
+t = threading.Thread(target=worker, kwargs={"name": "Alice"})
+
+# Lock -- prevents race conditions on shared state
+lock = threading.Lock()
+with lock:                                  # only one thread runs this block at a time
+    shared_value += 1
+
+# CAUTION: never hold a lock while calling t.join() on threads that need that lock
+# That is a deadlock.
+\end{lstlisting}
+
+\subsection{Worker pool -- competing for jobs from shared state}
+\begin{lstlisting}
+# Pattern: lock wraps state ACCESS only -- work happens outside the lock
+def run_parallel(self, n_workers):
+    def worker():
+        while True:
+            with self.lock:
+                job = self.start_next()    # atomically grab AND mark the job
+            if job is None:
+                break
+            self.finish(job["id"])         # work outside lock = true parallelism
+
+    threads = [threading.Thread(target=worker) for _ in range(n_workers)]
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+# KEY: start_next() must atomically find AND change status.
+# If you separate "find" and "mark" into two locked calls, two workers can
+# both see the same job between the two calls -- race condition.
+\end{lstlisting}
+
+\subsection{Ordered results from parallel tasks}
+\begin{lstlisting}
+# Pre-allocate results list -- write by index, not append
+def parallel_map(tasks, n_workers):
+    results = [None] * len(tasks)    # pre-allocate by length
+    lock = threading.Lock()
+    next_i = 0
+
+    def worker():
+        nonlocal next_i              # required to assign to enclosing variable
+        while True:
+            with lock:
+                i = next_i
+                if i >= len(tasks):
+                    break
+                next_i += 1          # grab index under lock (atomic check+increment)
+            results[i] = tasks[i]()  # write to pre-allocated slot -- no lock needed
+                                     # (each worker writes to a different index)
+
+    threads = [threading.Thread(target=worker) for _ in range(n_workers)]
+    for t in threads: t.start()
+    for t in threads: t.join()
+    return results
+
+# nonlocal: required when an inner function ASSIGNS to an outer variable.
+# Reading an outer variable is fine without it; assigning triggers UnboundLocalError.
+def outer():
+    count = 0
+    def inner():
+        nonlocal count    # without this: UnboundLocalError on count += 1
+        count += 1
+    inner()
+    return count          # 1
+\end{lstlisting}
+
+\subsection{Thread-safe counter}
+\begin{lstlisting}
+class ThreadSafeCounter:
+    def __init__(self):
+        self._count = 0
+        self._lock = threading.Lock()
+
+    def increment(self):
+        with self._lock:
+            self._count += 1
+
+    @property
+    def value(self):
+        with self._lock:
+            return self._count
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Queue (thread-safe communication) \normalfont\small\href{https://docs.python.org/3/library/queue.html}{docs}}
+
+\begin{lstlisting}
+import queue
+
+q = queue.Queue()           # thread-safe FIFO -- no lock needed for get/put
+q.put(item)                 # add item
+item = q.get(block=False)   # raises queue.Empty if empty -- use in try/except
+q.task_done()               # signal that a gotten item has been processed
+q.join()                    # block until all items have been task_done()
+
+# Worker pool with queue.Queue -- cleaner than manual lock when tasks are independent
+def process_with_workers(items, fn, n_workers):
+    q = queue.Queue()
+    results = {}
+    lock = threading.Lock()    # queue is thread-safe; results dict is NOT
+
+    for item in items:
+        q.put(item)
+
+    def worker():
+        while True:
+            try:
+                item = q.get(block=False)    # raises queue.Empty when done
+            except queue.Empty:
+                break
+            value = fn(item)
+            with lock:
+                results[item] = value        # protect the results dict
+
+    threads = [threading.Thread(target=worker) for _ in range(n_workers)]
+    for t in threads: t.start()
+    for t in threads: t.join()
+    return results
+
+# Use queue.Queue when distributing plain work items.
+# Use manual lock when "get next item" has side effects (e.g. marking a job as running).
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{asyncio \normalfont\small\href{https://docs.python.org/3/library/asyncio.html}{docs}}
+
+\begin{lstlisting}
+import asyncio
+
+# Declare a coroutine
+async def fetch(url):
+    await asyncio.sleep(1)      # await suspends this coroutine, lets others run
+    return url
+
+# Run concurrently -- equivalent of threading run_parallel
+async def main():
+    results = await asyncio.gather(fetch("a"), fetch("b"), fetch("c"))
+    return results
+
+asyncio.run(main())             # entry point -- starts the event loop, call once
+
+# Gather from a list (unpack with *)
+coros = [fetch(url) for url in urls]
+results = await asyncio.gather(*coros)
+
+# asyncio.sleep vs time.sleep
+await asyncio.sleep(1)          # yields control to event loop (correct)
+time.sleep(1)                   # BLOCKS entire event loop (wrong in async code)
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Threading vs asyncio}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+ & \textbf{threading} & \textbf{asyncio} \\
+\midrule
+Syntax & regular functions & \texttt{async def / await} \\
+Parallelism & OS threads (true concurrency) & single thread, cooperative \\
+Shared state & needs Lock & safer by default (one thing runs at a time) \\
+Best for & any blocking work, simpler mental model & high-concurrency I/O \\
+Worker loop & natural \texttt{while True} & needs \texttt{await} to yield \\
+CodeSignal advice & \textbf{prefer this} & use if spec requires it \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%-----------------------------------------------------------------------
+\section{Exception Handling \normalfont\small\href{https://docs.python.org/3/library/exceptions.html}{docs}}
+
+\begin{lstlisting}
+try:
+    result = risky_operation()
+except KeyError:
+    result = default
+except (TypeError, ValueError) as e:
+    raise RuntimeError("bad input") from e
+except Exception:               # catches all normal errors (not KeyboardInterrupt)
+    return None
+finally:
+    cleanup()                   # always runs
+
+# Raise with message
+raise ValueError("Cannot divide by zero")
+raise TypeError(f"Expected int, got {type(x).__name__}")
+
+# isinstance for type checking
+isinstance(x, (int, float))     # True if x is int or float -- not type(x) == int
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{In-Memory Key-Value Store Patterns}
+
+\subsection{Basic structure with TTL (time-to-live) \normalfont\small\href{https://docs.python.org/3/library/time.html}{time docs}}
+\begin{lstlisting}
+import time
+
+class KVStore:
+    def __init__(self):
+        self.data    = {}   # key -> value
+        self.expires = {}   # key -> expiry timestamp (float)
+                            # two separate dicts -- cleaner than nesting
+
+    def set(self, key, value):
+        self.data[key] = value
+        self.expires.pop(key, None)   # clear any existing TTL
+
+    def set_with_ttl(self, key, value, ttl):
+        self.data[key] = value
+        self.expires[key] = time.time() + ttl   # store absolute expiry time
+
+    def _expired(self, key):
+        if key not in self.expires:
+            return False
+        return time.time() >= self.expires[key]   # >= not >
+
+    def get(self, key):
+        if key not in self.data or self._expired(key):
+            return None
+        return self.data[key]
+
+    def delete(self, key):
+        if key in self.data and not self._expired(key):
+            del self.data[key]
+            self.expires.pop(key, None)
+            return True
+        return False
+
+# Prefix scan -- return all live keys matching a prefix
+def scan(self, prefix):
+    return {k: v for k, v in self.data.items()
+            if k.startswith(prefix) and not self._expired(k)}
+\end{lstlisting}
+
+\subsection{Transactions (begin / commit / rollback)}
+\begin{lstlisting}
+_DELETED = object()   # sentinel object -- distinct from any real value
+
+class KVStore:
+    def __init__(self):
+        self.data   = {}
+        self.buffer = None   # None = no active transaction; dict = transaction open
+
+    def begin(self):
+        self.buffer = {}
+
+    def commit(self):
+        if self.buffer is None:
+            return False
+        for key, value in self.buffer.items():
+            if value is _DELETED:        # buffered deletion
+                self.data.pop(key, None)
+            else:
+                self.data[key] = value
+        self.buffer = None
+        return True
+
+    def rollback(self):
+        if self.buffer is None:
+            return False
+        self.buffer = None               # discard without applying
+        return True
+
+    def set(self, key, value):
+        if self.buffer is not None:
+            self.buffer[key] = value     # buffer it -- don't touch data yet
+        else:
+            self.data[key] = value
+
+    def get(self, key):
+        if self.buffer is not None and key in self.buffer:
+            v = self.buffer[key]
+            return None if v is _DELETED else v   # respect buffered deletes
+        return self.data.get(key)
+
+    def delete(self, key):
+        if self.buffer is not None:
+            if key in self.buffer or key in self.data:
+                self.buffer[key] = _DELETED
+                return True
+            return False
+        if key in self.data:
+            del self.data[key]
+            return True
+        return False
+
+# Pattern summary:
+#   self.buffer = None   ->  no transaction
+#   self.buffer = {}     ->  transaction open; writes go here
+#   _DELETED sentinel    ->  records a deletion inside the buffer
+#   get() checks buffer first, then data  ->  reads see uncommitted writes
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Stack Simulation Pattern}
+
+\begin{lstlisting}
+# Pattern: prev_time tracks when current top-of-stack last started or resumed.
+# Used for problems involving nested function calls, intervals, or nested events.
+stack = []
+prev_time = 0
+
+for log in logs:
+    fn_id, event, timestamp = log.split(":")
+    fn_id, timestamp = int(fn_id), int(timestamp)
+
+    if event == "start":
+        if stack:
+            exclusive[stack[-1]] += timestamp - prev_time   # time before this call
+        stack.append(fn_id)
+        prev_time = timestamp
+
+    else:  # end
+        exclusive[stack[-1]] += timestamp - prev_time + 1  # +1: end is inclusive
+        stack.pop()
+        prev_time = timestamp + 1                           # resume at next unit
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{R-to-Python Gotchas}
+
+\begin{lstlisting}
+# Indexing: Python is 0-indexed
+lst[0]           # first element (not lst[1])
+lst[-1]          # last element (not lst[length])
+
+# Integer division
+10 / 3           # -> 3.333...  (float, even for ints)
+10 // 3          # -> 3         (floor division)
+
+# None check
+if x is None:    # correct
+if x == None:    # works but wrong style
+
+# Mutability: Python passes lists by reference
+def f(lst):
+    lst.append(1)  # modifies the ORIGINAL list
+
+# append returns None -- don't assign it
+result = lst.append(x)   # result is None -- common bug
+
+# Logical operators
+not x    # not !x
+and      # not &&
+or       # not ||
+
+# No paste() -- use f-strings
+f"hello {name}, you are {age} years old"
+
+# range vs R's seq
+range(n)          # 0, 1, ..., n-1  (not 1 to n)
+range(a, b)       # a, a+1, ..., b-1
+
+# Shadowing builtins -- don't use these as variable names
+# id, list, dict, set, type, input, range, min, max, sum, len, zip
+\end{lstlisting}
+
+%-----------------------------------------------------------------------
+\section{Assessment Strategy}
+
+\begin{itemize}[noitemsep]
+  \item Read the \textbf{full spec} before writing any code -- all levels.
+  \item Open the test file first -- tests are the spec, not the description.
+  \item \textbf{Sketch \texttt{\_\_init\_\_} before touching code}: what data structures, what fields does Level 4+ require? Add all fields upfront.
+  \item Use \texttt{dict} keyed by id, not a list -- O(1) lookup, simpler methods.
+  \item Start with Level 1, pass all tests before moving on.
+  \item Run tests early and often (\texttt{bash run\_single\_test.sh "<name>"} for one test).
+  \item Don't optimize. Write correct first.
+  \item For concurrency: use \texttt{threading} with \texttt{Lock} unless \texttt{asyncio} is explicitly required.
+  \item If stuck on a level, move on -- partial credit beats zero.
+  \item Leave 5 minutes to re-run all tests at the end.
+  \item Language docs and Google (AI Overview only) are allowed.
+\end{itemize}
+
+\end{document}
